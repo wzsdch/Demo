@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="2.0" xmlns:edmx="http://schemas.microsoft.com/ado/2008/10/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2008/10/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="65827f2315ef40dcaab0203f9021062d" Name="Diagram1" ZoomLevel="86">
+        <EntityTypeShape EntityType="dtczModel.t_vehicle_msg_today" Width="1.5" PointX="2.5" PointY="0.75" />
+        <EntityTypeShape EntityType="dtczModel.t_vehicle_overweight_temp" Width="1.5" PointX="4.75" PointY="0.75" />
+        <EntityTypeShape EntityType="dtczModel.t_vehicle_overweight" Width="1.5" PointX="7" PointY="0.75" />
+        <EntityTypeShape EntityType="dtczModel.station_site" Width="1.5" PointX="9.375" PointY="0.75" />
+        <EntityTypeShape EntityType="dtczModel.t_vehicle_msg" Width="1.5" PointX="0.5" PointY="0.75" />
+        <EntityTypeShape EntityType="dtczModel.t_vehicle_msg_abnormal" Width="1.5" PointX="11.5" PointY="0.75" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>

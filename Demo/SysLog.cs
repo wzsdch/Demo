@@ -30,7 +30,6 @@ namespace Demo
                 f.Close();
             }
         }
-
         public static void WriteError(string log)
         {
             lock (sync_log)

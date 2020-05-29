@@ -69,8 +69,8 @@ namespace Demo
                         {
                             IP = IP.Split(':')[0];
                         }
-                       // try
-                       // {
+                        try
+                        {
                             //解析消息
                             IMsg msg = MsgParser.Parse(data);
 
@@ -116,7 +116,7 @@ namespace Demo
 
                             //发送回复消息
                             serverSocket.Send(responseMsg.Encode());
-                        /*  }
+                          }
                           catch (Exception ex)
                           {
                               SysLog.WriteError(ex.Message);
@@ -125,7 +125,7 @@ namespace Demo
                               Console.WriteLine("接收数据出现错误");
                               return;
                           }
-                          */
+                          
                         Console.WriteLine();
                     }
                 }

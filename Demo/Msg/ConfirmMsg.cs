@@ -23,7 +23,16 @@ namespace Demo
 		protected override void EncodeContent(BinaryWriter w)
 		{
 			w.Write((short)ReceiveMsgType);
-			w.Write(ReceiveMsgId.ToCharArray(),0,25);
+            if (ReceiveMsgId.Length == 19)
+            {
+                byte[] b = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                w.Write(ReceiveMsgId.ToCharArray(), 0, 19);
+                w.Write(b);
+            }
+            else
+            {
+                w.Write(ReceiveMsgId.ToCharArray(), 0, 25);
+            }
 		}
 	}
 }

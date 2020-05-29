@@ -69,8 +69,8 @@ namespace Demo
                         {
                             IP = IP.Split(':')[0];
                         }
-                        try
-                        {
+                       // try
+                       // {
                             //解析消息
                             IMsg msg = MsgParser.Parse(data);
 
@@ -116,13 +116,16 @@ namespace Demo
 
                             //发送回复消息
                             serverSocket.Send(responseMsg.Encode());
-                        }
-                        catch (Exception ex)
-                        {
-                            SysLog.WriteError(ex.Message);
-                            Console.WriteLine(ex.Message);
-                            return;
-                        }
+                        /*  }
+                          catch (Exception ex)
+                          {
+                              SysLog.WriteError(ex.Message);
+                              Console.WriteLine(ex.Message);
+                              Console.WriteLine(ex.InnerException.Message);
+                              Console.WriteLine("接收数据出现错误");
+                              return;
+                          }
+                          */
                         Console.WriteLine();
                     }
                 }
@@ -869,8 +872,9 @@ namespace Demo
             }
             catch (Exception e)
             {
-                SysLog.WriteLog(e.Message);
+                SysLog.WriteError(e.Message);
                 Console.WriteLine(e.Message);
+                Console.WriteLine("[上传json]：失败,出现Exception");
             }
 
             if (isSuccess)

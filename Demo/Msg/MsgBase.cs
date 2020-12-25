@@ -73,8 +73,14 @@ namespace Demo
                 using (BinaryReader r = new BinaryReader(stream))
                 {
                     DecodeAndCheckHeader(r);
-
-                    DecodeContent(r);
+                    try
+                    {
+                        DecodeContent(r);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("解码发生错误:\r\n"+e.Message);
+                    }
                 }
             }
         }

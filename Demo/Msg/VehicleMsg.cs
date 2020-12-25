@@ -30,6 +30,11 @@ namespace Demo
         public DateTime EvtTime { get; set; }
 
         public DateTime MsgTime { get; set; }
+
+        /// <summary>
+        ///有效性号
+        /// </summary>
+        public byte ValidityCode { get; set; }
         /// <summary>
         /// 车牌号码
         /// </summary>
@@ -67,6 +72,12 @@ namespace Demo
         /// 是否跨道
         /// </summary>
         public byte IsStraddle { get; set; }
+
+        /// <summary>
+        /// 总轴距 cm
+        /// </summary>
+        public ushort Wheelbase { get; set; }
+
         /// <summary>
         /// 温度
         /// </summary>
@@ -117,6 +128,19 @@ namespace Demo
         public string DMS_Id { get; set; }
 
         public string LPR_Id { get; set; }
+
+        /// <summary>
+        /// 车间距，单位：50cm
+        /// </summary>
+        public ushort Gap { get; set; }
+        /// <summary>
+        /// 车时间距，单位：毫秒
+        /// </summary>
+        public ushort TimeGap { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public ushort Headway { get; set;}
 
         //是否超重状态，1：正常数据，-1：异常数据,0：未超重正常数据
         public int OverWeightDataState { get; set; }
@@ -471,26 +495,32 @@ namespace Demo
         protected override void DecodeContent(System.IO.BinaryReader r)
         {
             //25
-            Id = Encoding.UTF8.GetString(r.ReadBytes(25)).Trim();  //车辆信息Id
+            Id = Encoding.UTF8.GetString(r.ReadBytes(25)).Trim();       //车辆信息Id
             //6
             StationId = Encoding.UTF8.GetString(r.ReadBytes(6)).Trim(); //r.ReadUInt32();  //站点Id
             //8
-            EvtTime = ConvertToDateTime(r.ReadUInt64());    //事件发生时间
+            EvtTime = ConvertToDateTime(r.ReadUInt64());                //事件发生时间
             //8
-            MsgTime = ConvertToDateTime(r.ReadUInt64());      //消息接收时间
+            MsgTime = ConvertToDateTime(r.ReadUInt64());                 //消息接收时间
             //1
-            LaneNo = r.ReadByte();   //车道序号
+            LaneNo = r.ReadByte();                                      //车道序号
             //8
-            EvtNo = r.ReadInt64();  //设备序号
-            //8
-            r.ReadUInt64();//备用
+            EvtNo = r.ReadInt64();                                      //设备序号
+            //4
+            r.ReadUInt32();                                             //备用
+            //2
+            r.ReadUInt16();                                 //备用
+            //1
+            r.ReadByte();                                   //备用
+            //1
+            ValidityCode = r.ReadByte();                    //有效性号
             //15
             Plate = Encoding.UTF8.GetString(r.ReadBytes(15)).Trim("\0".ToCharArray());//车牌号码
             //Plate = Encoding.GetEncoding("gb2312").GetString(r.ReadBytes(15)).Trim("\0".ToCharArray());
             //1
-            PlateColor = r.ReadByte();//车牌颜色
+            PlateColor = r.ReadByte();                      //车牌颜色
             //4
-            r.ReadUInt32();//备用
+            r.ReadUInt32();                                 //备用
             //1
             ClassIndex = r.ReadByte(); //DictDataModel.ClassIndexs(r.ReadByte()); //r.ReadByte();         //车型
             //1
@@ -510,24 +540,24 @@ namespace Demo
                 axleSpaces[idx] = r.ReadUInt16();//axle_x weight
             }
             //1
-            Direction = r.ReadByte();// == 1 ? "逆行" : "正常行驶";//direction   //DictDataModel.dictDemo(r.ReadByte()); 
+            Direction = r.ReadByte();                           // == 1 ? "逆行" : "正常行驶";//direction   //DictDataModel.dictDemo(r.ReadByte()); 
             //2
-            Speed = r.ReadInt16();//speed
+            Speed = r.ReadInt16();                              //speed
             //2
-            Length = r.ReadUInt16();//length
+            Length = r.ReadUInt16();                            //length
             //2
-            Width = r.ReadUInt16();//width
+            Width = r.ReadUInt16();                             //width
             //2
-            Height = r.ReadUInt16();//height                            
+            Height = r.ReadUInt16();                            //height                            
             //2
-            r.ReadUInt16();//备用
+            Wheelbase = r.ReadUInt16();                         //总轴距 cm
             //1
-            Temperature = r.ReadByte() - 100;//温度
+            Temperature = r.ReadByte() - 100;                   //温度
             //1
-            IsStraddle = r.ReadByte();// ? "跨道" : "未跨道";//isStraddle
+            IsStraddle = r.ReadByte();                          // ? "跨道" : "未跨道";//isStraddle
 
             //2
-            OverLength = r.ReadUInt16();//over width, height, length, speed, weight
+            OverLength = r.ReadUInt16();                        //over width, height, length, speed, weight
             //2
             OverWidth = r.ReadUInt16();
             //2
@@ -560,14 +590,17 @@ namespace Demo
             var laserImgSize = r.ReadInt32();//laser img size   //激光3D图片大小
             LaserImgData = r.ReadBytes(laserImgSize);//laser img data
 
-            r.ReadBytes(6);//备用
+            //r.ReadBytes(6);//备用
+            Gap = r.ReadUInt16();                   //车间距，单位：50cm
+            TimeGap =  r.ReadUInt16();             //车时间距，单位：毫秒
+            Headway = r.ReadUInt16();               //车头时距，单位：100毫秒
 
             WIM_Id = Encoding.UTF8.GetString(r.ReadBytes(25));//wim    //动态称重记录Id 
             LPR_Id = Encoding.UTF8.GetString(r.ReadBytes(25));//lpr    //车牌识别记录Id
             DMS_Id = Encoding.UTF8.GetString(r.ReadBytes(25));//dms    //激光扫描记录Id
 
             OverWeightCalculate();
-            if (this.AxlesCount > 10 || this.Length > 2500 || this.Length < 0 || this.Axle1_T > 9500)
+            if (this.AxlesCount > 10 || this.Length > 2500 || this.Length < 0 || this.Axle1_T > 9500||this.TotalWeight>100000)
             {
                 OverWeightDataState = -1;
             }
@@ -579,6 +612,16 @@ namespace Demo
                 }
                 else
                 {
+                    //G15沈海苏沪省界2车道全部超重数据放入异常数据库 
+                    //2020.10.30改
+                    //start
+                    if (Program.port.Equals("10017") && this.LaneNo == 2)
+                    {
+                        OverWeight = 0;
+                        this.OverWeightRatio = 0;
+                        OverWeightDataState = -1;
+                    }else
+                    //end
                     OverWeightDataState = 1;
                 }
             }

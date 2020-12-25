@@ -16,7 +16,10 @@ namespace Demo
 		{
 			if (data == null || data.Length < 8)
 			{
-				throw new Exception("数据为null或长度小于8");
+                //throw new Exception("数据为null或长度小于8");
+                SysLog.WriteError("数据为null或长度小于8");
+                Console.WriteLine("数据为null或长度小于8");
+                return null;
 			}
 
 			MsgType msgType = (MsgType) BitConverter.ToUInt16(data, 2);
@@ -24,14 +27,20 @@ namespace Demo
 
 			if (msgLength != (data.Length - 8))
 			{
-				throw new Exception("消息实际长度与声明的长度不一致。");
-			}
+				//throw new Exception("消息实际长度与声明的长度不一致。");
+                SysLog.WriteError("消息实际长度与声明的长度不一致");
+                Console.WriteLine("消息实际长度与声明的长度不一致");
+                return null;
+            }
 
 			IMsg msg = Create(msgType);
 			if (msg == null)
 			{
-				throw new Exception("无法处理的消息类型");
-			}
+				//throw new Exception("无法处理的消息类型");
+                SysLog.WriteError("无法处理的消息类型");
+                Console.WriteLine("无法处理的消息类型");
+                return null; 
+            }
 			else
 			{
 				try
@@ -42,8 +51,11 @@ namespace Demo
 				{
                     SysLog.WriteError(ex.Message);
                     SysLog.WriteError(ex.InnerException.Message);
-					throw new Exception("解码消息数据失败");
-				}
+					//throw new Exception("解码消息数据失败");
+                    SysLog.WriteError("解码消息数据失败");
+                    Console.WriteLine("解码消息数据失败");
+                    return null;
+                }
 			}
 			return msg;
 		}

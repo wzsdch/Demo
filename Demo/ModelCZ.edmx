@@ -75,6 +75,11 @@
           <Property Name="Over_Weight_Ratio" Type="double" />
           <Property Name="WIM_Id" Type="char" MaxLength="25" />
           <Property Name="LPR_id" Type="char" MaxLength="25" />
+          <Property Name="ValidityCode" Type="int" />
+          <Property Name="Wheelbase" Type="int" />
+          <Property Name="Gap" Type="int" />
+          <Property Name="TimeGap" Type="int" />
+          <Property Name="Headway" Type="int" />
           <Property Name="Station_IP" Type="varchar" MaxLength="12" />
         </EntityType>
         <EntityType Name="t_vehicle_msg_abnormal">
@@ -120,6 +125,11 @@
           <Property Name="Over_Weight_Ratio" Type="double" />
           <Property Name="WIM_Id" Type="char" MaxLength="25" />
           <Property Name="LPR_id" Type="char" MaxLength="25" />
+          <Property Name="ValidityCode" Type="int" />
+          <Property Name="Wheelbase" Type="int" />
+          <Property Name="Gap" Type="int" />
+          <Property Name="TimeGap" Type="int" />
+          <Property Name="Headway" Type="int" />
           <Property Name="Station_IP" Type="varchar" MaxLength="12" />
         </EntityType>
         <EntityType Name="t_vehicle_msg_today">
@@ -165,6 +175,11 @@
           <Property Name="Over_Weight_Ratio" Type="double" />
           <Property Name="WIM_Id" Type="char" MaxLength="25" />
           <Property Name="LPR_id" Type="char" MaxLength="25" />
+          <Property Name="ValidityCode" Type="int" />
+          <Property Name="Wheelbase" Type="int" />
+          <Property Name="Gap" Type="int" />
+          <Property Name="TimeGap" Type="int" />
+          <Property Name="Headway" Type="int" />
           <Property Name="Station_IP" Type="varchar" MaxLength="12" />
         </EntityType>
         <EntityType Name="t_vehicle_overweight">
@@ -210,6 +225,11 @@
           <Property Name="Over_Weight_Ratio" Type="double" />
           <Property Name="WIM_Id" Type="char" MaxLength="25" />
           <Property Name="LPR_id" Type="char" MaxLength="25" />
+          <Property Name="ValidityCode" Type="int" />
+          <Property Name="Wheelbase" Type="int" />
+          <Property Name="Gap" Type="int" />
+          <Property Name="TimeGap" Type="int" />
+          <Property Name="Headway" Type="int" />
           <Property Name="Station_IP" Type="varchar" MaxLength="12" />
         </EntityType>
         <EntityType Name="t_vehicle_overweight_temp">
@@ -321,6 +341,11 @@
           <Property Name="WIM_Id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="LPR_id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="Station_IP" Type="String" MaxLength="12" FixedLength="false" Unicode="false" />
+          <Property Name="ValidityCode" Type="Int32" />
+          <Property Name="Wheelbase" Type="Int32" />
+          <Property Name="Gap" Type="Int32" />
+          <Property Name="TimeGap" Type="Int32" />
+          <Property Name="Headway" Type="Int32" />
         </EntityType>
         <EntityType Name="t_vehicle_overweight_temp">
           <Key>
@@ -411,6 +436,11 @@
           <Property Name="WIM_Id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="LPR_id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="Station_IP" Type="String" MaxLength="12" FixedLength="false" Unicode="false" />
+          <Property Name="ValidityCode" Type="Int32" />
+          <Property Name="Wheelbase" Type="Int32" />
+          <Property Name="Gap" Type="Int32" />
+          <Property Name="TimeGap" Type="Int32" />
+          <Property Name="Headway" Type="Int32" />
         </EntityType>
         <EntityType Name="station_site">
           <Key>
@@ -483,6 +513,11 @@
           <Property Name="WIM_Id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="LPR_id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="Station_IP" Type="String" MaxLength="12" FixedLength="false" Unicode="false" />
+          <Property Name="ValidityCode" Type="Int32" />
+          <Property Name="Wheelbase" Type="Int32" />
+          <Property Name="Gap" Type="Int32" />
+          <Property Name="TimeGap" Type="Int32" />
+          <Property Name="Headway" Type="Int32" />
         </EntityType>
         <EntityType Name="t_vehicle_msg_abnormal">
           <Key>
@@ -528,6 +563,11 @@
           <Property Name="WIM_Id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="LPR_id" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
           <Property Name="Station_IP" Type="String" MaxLength="12" FixedLength="false" Unicode="false" />
+          <Property Name="ValidityCode" Type="Int32" />
+          <Property Name="Wheelbase" Type="Int32" />
+          <Property Name="Gap" Type="Int32" />
+          <Property Name="TimeGap" Type="Int32" />
+          <Property Name="Headway" Type="Int32" />
         </EntityType>
       </Schema>
     </edmx:ConceptualModels>
@@ -538,6 +578,11 @@
           <EntitySetMapping Name="t_vehicle_msg_today">
             <EntityTypeMapping TypeName="dtczModel.t_vehicle_msg_today">
               <MappingFragment StoreEntitySet="t_vehicle_msg_today">
+                <ScalarProperty Name="Headway" ColumnName="Headway" />
+                <ScalarProperty Name="TimeGap" ColumnName="TimeGap" />
+                <ScalarProperty Name="Gap" ColumnName="Gap" />
+                <ScalarProperty Name="Wheelbase" ColumnName="Wheelbase" />
+                <ScalarProperty Name="ValidityCode" ColumnName="ValidityCode" />
                 <ScalarProperty Name="Station_IP" ColumnName="Station_IP" />
                 <ScalarProperty Name="LPR_id" ColumnName="LPR_id" />
                 <ScalarProperty Name="WIM_Id" ColumnName="WIM_Id" />
@@ -630,6 +675,11 @@
           <EntitySetMapping Name="t_vehicle_overweight">
             <EntityTypeMapping TypeName="dtczModel.t_vehicle_overweight">
               <MappingFragment StoreEntitySet="t_vehicle_overweight">
+                <ScalarProperty Name="Headway" ColumnName="Headway" />
+                <ScalarProperty Name="TimeGap" ColumnName="TimeGap" />
+                <ScalarProperty Name="Gap" ColumnName="Gap" />
+                <ScalarProperty Name="Wheelbase" ColumnName="Wheelbase" />
+                <ScalarProperty Name="ValidityCode" ColumnName="ValidityCode" />
                 <ScalarProperty Name="Station_IP" ColumnName="Station_IP" />
                 <ScalarProperty Name="LPR_id" ColumnName="LPR_id" />
                 <ScalarProperty Name="WIM_Id" ColumnName="WIM_Id" />
@@ -704,6 +754,11 @@
           <EntitySetMapping Name="t_vehicle_msg">
             <EntityTypeMapping TypeName="dtczModel.t_vehicle_msg">
               <MappingFragment StoreEntitySet="t_vehicle_msg">
+                <ScalarProperty Name="Headway" ColumnName="Headway" />
+                <ScalarProperty Name="TimeGap" ColumnName="TimeGap" />
+                <ScalarProperty Name="Gap" ColumnName="Gap" />
+                <ScalarProperty Name="Wheelbase" ColumnName="Wheelbase" />
+                <ScalarProperty Name="ValidityCode" ColumnName="ValidityCode" />
                 <ScalarProperty Name="Station_IP" ColumnName="Station_IP" />
                 <ScalarProperty Name="LPR_id" ColumnName="LPR_id" />
                 <ScalarProperty Name="WIM_Id" ColumnName="WIM_Id" />
@@ -750,6 +805,11 @@
           <EntitySetMapping Name="t_vehicle_msg_abnormal">
             <EntityTypeMapping TypeName="dtczModel.t_vehicle_msg_abnormal">
               <MappingFragment StoreEntitySet="t_vehicle_msg_abnormal">
+                <ScalarProperty Name="Headway" ColumnName="Headway" />
+                <ScalarProperty Name="TimeGap" ColumnName="TimeGap" />
+                <ScalarProperty Name="Gap" ColumnName="Gap" />
+                <ScalarProperty Name="Wheelbase" ColumnName="Wheelbase" />
+                <ScalarProperty Name="ValidityCode" ColumnName="ValidityCode" />
                 <ScalarProperty Name="Station_IP" ColumnName="Station_IP" />
                 <ScalarProperty Name="LPR_id" ColumnName="LPR_id" />
                 <ScalarProperty Name="WIM_Id" ColumnName="WIM_Id" />

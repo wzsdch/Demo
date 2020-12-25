@@ -15,6 +15,7 @@ using System.Net;
 using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Linq;
+using System.Data.Entity.Infrastructure;
 
 namespace Demo
 {
@@ -29,119 +30,149 @@ namespace Demo
 
         private static void Main(string[] args)
         {
-            Console.Title = "Demo" + args[0];
-            port = args[0];
+            if (args.Length != 1)
+            {
+                SysLog.WriteError("参数不正确，请以\r\ncmd demo.exe {本机监听端口号} \r\n启动，例如\r\ndemo.exe 20000");
+                Console.WriteLine("参数不正确，请以\r\ncmd demo.exe {本机监听端口号} \r\n启动，例如\r\ndemo.exe 20000");
+                return;
+            }
             timer.Elapsed += Timer_Tick;
             timer.Interval = 60 * 60 * 1000;
             timer.Enabled = true;
             //new Thread(isReceivedLink).Start();
+            Console.Title = "Demo" + args[0];
+            port = args[0];
             SysLog.LogName = $"port：{args[0]}.log";
-            if (args.Length != 1)
-            {
-                SysLog.WriteError("参数数目不正确");
-                Console.WriteLine("参数数目不正确");
-            }
             //进程通信，给服务端通知这是开启的哪个端口
             //Info.ProInfo.GetProcessInfo(args[0]);
-            //创建消息上下文对象
-            using (NetMQContext context = NetMQContext.Create())
+
+
+            while (true)
             {
-                //创建Socket对象
                 try
                 {
-                    NetMQSocket serverSocket = context.CreateResponseSocket();
-
-                    //绑定本地端口，监听客户端的请求，端口号与配置一致
-                    serverSocket.Bind($"tcp://*:{args[0]}");
-                    Console.WriteLine($"开始监听{args[0]}");
-                    SysLog.WriteLog($"开始监听{args[0]}");
-                    string IP = "";
-                    while (true)
+                    //创建消息上下文对象
+                    using (NetMQContext context = NetMQContext.Create())
                     {
-                        //接收消息
-                        byte[] data = serverSocket.Receive();
-                        SysLog.WriteLog($"收到数据，来自：{serverSocket.Options.GetLastEndpoint}");
-                        Console.WriteLine($"收到数据，来自：{serverSocket.Options.GetLastEndpoint}数据类型：{data[2]}");
-                        receivedCount++;
-                        //saveInFile(data);
-                        IP = serverSocket.Options.GetLastEndpoint;
-                        if (IP.Contains(":"))
-                        {
-                            IP = IP.Split(':')[0];
-                        }
-                        try
-                        {
-                            //解析消息
-                            IMsg msg = MsgParser.Parse(data);
+                        //创建Socket对象
 
-                            //创建回复消息
-                            ConfirmMsg responseMsg = new ConfirmMsg
-                            {
-                                ReceiveMsgType = msg.Type,
-                                ReceiveMsgId = "0"
-                            };
+                        NetMQSocket serverSocket = context.CreateResponseSocket();
 
-                            //打印消息数据
-                            switch (msg.Type)
+                        //绑定本地端口，监听客户端的请求，端口号与配置一致
+                        serverSocket.Bind($"tcp://*:{args[0]}");
+                        Console.WriteLine($"开始监听{args[0]}");
+                        SysLog.WriteLog($"开始监听{args[0]}");
+                        string IP = "";
+                        byte[] data;
+                        while (true)
+                        {
+                            //接收消息
+                            data = serverSocket.Receive();
+
+                            SysLog.WriteLog($"收到数据，来自：{serverSocket.Options.GetLastEndpoint}");
+                            Console.WriteLine($"收到数据，来自：{serverSocket.Options.GetLastEndpoint}数据类型：{data[2]}");
+                            receivedCount++;
+                            //saveInFileBytes(data);
+                            IP = serverSocket.Options.GetLastEndpoint;
+                            if (IP.Contains(":"))
                             {
-                                //车辆消息--可以根据实际情况获取消息内容
-                                case MsgType.Vehicle:
-                                    {
-                                        VehicleMsg vMsg = msg as VehicleMsg;
-                                        responseMsg.ReceiveMsgId = vMsg.Id;
-                                        SysLog.WriteLog(string.Format("车辆信息：({0} {1} {2}t {3})", vMsg.Id, vMsg.EvtTime, vMsg.Weight_T, vMsg.Status));
-                                        Console.WriteLine(string.Format("车辆信息：({0} {1} {2} {3}t {4} {5})", vMsg.Id, vMsg.Plate, vMsg.EvtTime, vMsg.Weight_T, vMsg.Speed, vMsg.Status));
-                                        Intodb(vMsg, IP, args[0]);
-                                        vMsg = null;
-                                        break;
-                                    }
-                                //称重消息--可以根据实际情况获取消息内容
-                                case MsgType.Wim:
-                                    {
-                                        WIMMsg wMsg = msg as WIMMsg;
-                                        SysLog.WriteLog(string.Format("称重信息(时间：{0}，车道：{1}, 轴数：{2}，总重：{3}t, 车速：{4}k/h，车长: {5}m)",
-                                        wMsg.EvtTime.ToString("yyyy-MM-dd HH:mm:ss"), wMsg.LaneNo, wMsg.AxlesCount, wMsg.Weight_T, wMsg.Speed, wMsg.Length_M));
-                                        responseMsg.ReceiveMsgId = wMsg.Id;
-                                        wMsg = null;
-                                        break;
-                                    }
-                                //心跳消息
-                                case MsgType.Heart:
-                                    {
-                                        SysLog.WriteLog("Heart");
-                                        Console.WriteLine("Heart");
-                                        break;
-                                    }
+                                IP = IP.Split(':')[0];
+                            }
+                            try
+                            {
+                                //解析消息
+                                IMsg msg = MsgParser.Parse(data);
+                                //出现错误时，msg会为null，继续等待下次接收到的数据。
+                                if (msg == null)
+                                {
+                                    continue;
+                                }
+                                //创建回复消息
+                                ConfirmMsg responseMsg = new ConfirmMsg
+                                {
+                                    ReceiveMsgType = msg.Type,
+                                    ReceiveMsgId = "0"
+                                };
+
+                                //打印消息数据
+                                switch (msg.Type)
+                                {
+                                    //车辆消息--可以根据实际情况获取消息内容
+                                    case MsgType.Vehicle:
+                                        {
+                                            VehicleMsg vMsg = msg as VehicleMsg;
+                                            responseMsg.ReceiveMsgId = vMsg.Id;
+                                            SysLog.WriteLog(string.Format("车辆信息：({0} {1} {2}t {3})", vMsg.Id, vMsg.EvtTime, vMsg.Weight_T, vMsg.Status));
+                                            Console.WriteLine(string.Format("车辆信息：({0} {1} {2} {3}t {4} {5})", vMsg.Id, vMsg.Plate, vMsg.EvtTime, vMsg.Weight_T, vMsg.Speed, vMsg.Status));
+                                            Intodb(vMsg, IP, args[0]);
+                                            vMsg = null;
+                                            break;
+                                        }
+                                    //称重消息--可以根据实际情况获取消息内容
+                                    case MsgType.Wim:
+                                        {
+                                            WIMMsg wMsg = msg as WIMMsg;
+                                            SysLog.WriteLog(string.Format("称重信息(时间：{0}，车道：{1}, 轴数：{2}，总重：{3}t, 车速：{4}k/h，车长: {5}m)",
+                                            wMsg.EvtTime.ToString("yyyy-MM-dd HH:mm:ss"), wMsg.LaneNo, wMsg.AxlesCount, wMsg.Weight_T, wMsg.Speed, wMsg.Length_M));
+                                            responseMsg.ReceiveMsgId = wMsg.Id;
+                                            wMsg = null;
+                                            break;
+                                        }
+                                    //心跳消息
+                                    case MsgType.Heart:
+                                        {
+                                            SysLog.WriteLog("Heart");
+                                            Console.WriteLine("Heart");
+                                            break;
+                                        }
+                                }
+
+                                //发送回复消息
+                                serverSocket.Send(responseMsg.Encode());
+                            }
+                            catch (Exception ex)
+                            {
+                                SysLog.WriteError(ex.Message);
+                                Console.WriteLine(ex.Message);
+                                Console.WriteLine(ex.InnerException.Message);
+                                Console.WriteLine("接收数据出现错误");
+                                return;
                             }
 
-                            //发送回复消息
-                            serverSocket.Send(responseMsg.Encode());
-                          }
-                          catch (Exception ex)
-                          {
-                              SysLog.WriteError(ex.Message);
-                              Console.WriteLine(ex.Message);
-                              Console.WriteLine(ex.InnerException.Message);
-                              Console.WriteLine("接收数据出现错误");
-                              return;
-                          }
-                          
-                        Console.WriteLine();
+                            Console.WriteLine();
+                        }
                     }
+
                 }
-                /*   catch (SocketException es)
-                     {
-                         SysLog.WriteError(es.Message);
-                         Console.WriteLine(es.Message);
-                     }*/
+                catch (SocketException es)
+                {
+                    SysLog.WriteError(es.Message);
+                    Console.WriteLine(es.Message);
+                    SysLog.WriteError("服务出错，正在软件内重启");
+                    Console.WriteLine("服务出错，正在软件内重启");
+                    Thread.Sleep(2000);
+                }
                 catch (NetMQException e2)
                 {
                     SysLog.WriteError("error" + e2.InnerException.Message);
                     Console.WriteLine("error" + e2.InnerException.Message);
+                    SysLog.WriteError("服务出错，正在软件内重启");
+                    Console.WriteLine("服务出错，正在软件内重启");
+                    Thread.Sleep(2000);
+                }
+                catch (Exception eall)
+                {
+                    SysLog.WriteError(eall.Message);
+                    Console.WriteLine(eall.Message);
+                    SysLog.WriteError("服务出错，正在软件内重启");
+                    Console.WriteLine("服务出错，正在软件内重启");
+                    Thread.Sleep(2000);
 
                 }
             }
-        }
+                    
+         }
+    
 
         public static void Intodb(VehicleMsg vMsg, string IP, string port)
         {
@@ -154,341 +185,396 @@ namespace Demo
 
         private static void saveintoDatabase(object oht)
         {
-            Hashtable ht = (Hashtable)oht;
-            VehicleMsg vMsg = (VehicleMsg)ht["vMsg"];
-            string IP = (string)ht["IP"];
-            string port = (string)ht["port"];
-            //tv是全部车辆数据
-            t_vehicle_msg tv = new t_vehicle_msg();
-            //tvt是当日车辆数据，数据库每天零点会清空
-            t_vehicle_msg_today tvt = null;
-            //tvot是超重超载车辆数据，当车重符合条件并超过规定数额时，增加一条
-            t_vehicle_overweight_temp tvot = null;
-
-            t_vehicle_overweight tvo = null;
-
-            t_vehicle_msg_abnormal tva = null;
-
-            //tv.id_local = System.Guid.NewGuid().ToString("N");//用UUID作为当前一条数据的ID。
-            tv.id_local = vMsg.Id;
-            tv.Id = vMsg.Id;
-            tv.Station_Id = vMsg.StationId;
-            tv.Evt_Time = vMsg.EvtTime;
-            tv.Msg_Time = vMsg.MsgTime;
-            tv.Lane_No = (sbyte)vMsg.LaneNo;
-            tv.Plate = vMsg.Plate;
-            tv.Plate_Color = (sbyte)vMsg.PlateColor;
-            tv.Class_Index = (sbyte)vMsg.ClassIndex;
-            tv.Length = (short)vMsg.Length;
-            tv.Speed = vMsg.Speed;
-            tv.Direction = (sbyte)vMsg.Direction;
-            tv.Axles_Count = (sbyte)vMsg.AxlesCount;
-            tv.Total_Weight = (int)vMsg.TotalWeight;
-            tv.Is_Straddle = (sbyte)vMsg.IsStraddle;
-            tv.Temperature = (sbyte)vMsg.Temperature;
-            tv.Over_Weight = (int)vMsg.OverWeight;
-            tv.Over_Weight_Ratio = vMsg.OverWeightRatio;
-
-            tv.Axle1 = vMsg.AxleWeights[0];
-            tv.Axle2 = vMsg.AxleWeights[1];
-            tv.Axle3 = vMsg.AxleWeights[2];
-            tv.Axle4 = vMsg.AxleWeights[3];
-            tv.Axle5 = vMsg.AxleWeights[4];
-            tv.Axle6 = vMsg.AxleWeights[5];
-            tv.Axle7 = vMsg.AxleWeights[6];
-            tv.Axle8 = vMsg.AxleWeights[7];
-            tv.Axle9 = vMsg.AxleWeights[8];
-            tv.Axle10 = vMsg.AxleWeights[9];
-
-            tv.Axle_space1 = vMsg.axleSpaces[0];
-            tv.Axle_space2 = vMsg.axleSpaces[1];
-            tv.Axle_space3 = vMsg.axleSpaces[2];
-            tv.Axle_space4 = vMsg.axleSpaces[3];
-            tv.Axle_space5 = vMsg.axleSpaces[4];
-            tv.Axle_space6 = vMsg.axleSpaces[5];
-            tv.Axle_space7 = vMsg.axleSpaces[6];
-            tv.Axle_space8 = vMsg.axleSpaces[7];
-            tv.Axle_space9 = vMsg.axleSpaces[8];
-            tv.Station_IP = port;
-            tv.WIM_Id = "";
-            tv.LPR_id = "";
-
-            if (vMsg.OverWeightDataState == -1)
-            {
-                tva = new t_vehicle_msg_abnormal();
-                tva.id_local = tv.id_local;//用UUID作为当前一条数据的ID。
-                tva.Id = tv.Id;
-                tva.Station_Id = tv.Station_Id;
-                tva.Evt_Time = tv.Evt_Time;
-                tva.Msg_Time = tv.Msg_Time;
-                tva.Lane_No = tv.Lane_No;
-                tva.Plate = tv.Plate;
-                tva.Plate_Color = tv.Plate_Color;
-                tva.Class_Index = tv.Class_Index;
-                tva.Length = tv.Length;
-                tva.Speed = tv.Speed;
-                tva.Direction = tv.Direction;
-                tva.Axles_Count = tv.Axles_Count;
-                tva.Total_Weight = tv.Total_Weight;
-                tva.Is_Straddle = tv.Is_Straddle;
-                tva.Temperature = tv.Temperature;
-                tva.Over_Weight = tv.Over_Weight;
-                tva.Over_Weight_Ratio = tv.Over_Weight_Ratio;
-
-                tva.Axle1 = tv.Axle1;
-                tva.Axle2 = tv.Axle2;
-                tva.Axle3 = tv.Axle3;
-                tva.Axle4 = tv.Axle4;
-                tva.Axle5 = tv.Axle5;
-                tva.Axle6 = tv.Axle6;
-                tva.Axle7 = tv.Axle7;
-                tva.Axle8 = tv.Axle8;
-                tva.Axle9 = tv.Axle9;
-                tva.Axle10 = tv.Axle10;
-
-                tva.Axle_space1 = tv.Axle_space1;
-                tva.Axle_space2 = tv.Axle_space2;
-                tva.Axle_space3 = tv.Axle_space3;
-                tva.Axle_space4 = tv.Axle_space4;
-                tva.Axle_space5 = tv.Axle_space5;
-                tva.Axle_space6 = tv.Axle_space6;
-                tva.Axle_space7 = tv.Axle_space7;
-                tva.Axle_space8 = tv.Axle_space8;
-                tva.Axle_space9 = tv.Axle_space9;
-                tva.Station_IP = tv.Station_IP;
-                tva.WIM_Id = tv.WIM_Id;
-                tva.LPR_id = tv.LPR_id;
-            }
-            
-            if ((DateTime.Compare(DateTime.Now.Date, tv.Evt_Time.Date) == 0))
-            {
-                tvt = new t_vehicle_msg_today();
-                tvt.id_local = tv.id_local;//用UUID作为当前一条数据的ID。
-                tvt.Id = tv.Id;
-                tvt.Station_Id = tv.Station_Id;
-                tvt.Evt_Time = tv.Evt_Time;
-                tvt.Msg_Time = tv.Msg_Time;
-                tvt.Lane_No = tv.Lane_No;
-                tvt.Plate = tv.Plate;
-                tvt.Plate_Color = tv.Plate_Color;
-                tvt.Class_Index = tv.Class_Index;
-                tvt.Length = tv.Length;
-                tvt.Speed = tv.Speed;
-                tvt.Direction = tv.Direction;
-                tvt.Axles_Count = tv.Axles_Count;
-                tvt.Total_Weight = tv.Total_Weight;
-                tvt.Is_Straddle = tv.Is_Straddle;
-                tvt.Temperature = tv.Temperature;
-                tvt.Over_Weight = tv.Over_Weight;
-                tvt.Over_Weight_Ratio = tv.Over_Weight_Ratio;
-
-                tvt.Axle1 = tv.Axle1;
-                tvt.Axle2 = tv.Axle2;
-                tvt.Axle3 = tv.Axle3;
-                tvt.Axle4 = tv.Axle4;
-                tvt.Axle5 = tv.Axle5;
-                tvt.Axle6 = tv.Axle6;
-                tvt.Axle7 = tv.Axle7;
-                tvt.Axle8 = tv.Axle8;
-                tvt.Axle9 = tv.Axle9;
-                tvt.Axle10 = tv.Axle10;
-
-                tvt.Axle_space1 = tv.Axle_space1;
-                tvt.Axle_space2 = tv.Axle_space2;
-                tvt.Axle_space3 = tv.Axle_space3;
-                tvt.Axle_space4 = tv.Axle_space4;
-                tvt.Axle_space5 = tv.Axle_space5;
-                tvt.Axle_space6 = tv.Axle_space6;
-                tvt.Axle_space7 = tv.Axle_space7;
-                tvt.Axle_space8 = tv.Axle_space8;
-                tvt.Axle_space9 = tv.Axle_space9;
-                tvt.Station_IP = tv.Station_IP;
-                tvt.WIM_Id = tv.WIM_Id;
-                tvt.LPR_id = tv.LPR_id;
-            }
-            /*      if (tv.Total_Weight >= 80000)
-                  {
-                      tvot = new t_vehicle_overweight_temp();
-                      tvot.id_local = tv.id_local;
-                      tvot.Id = tv.Id;
-                      tvot.Station_Id = tv.Station_Id;
-                      tvot.Evt_Time = tv.Evt_Time;
-                      tvot.Msg_Time = tv.Msg_Time;
-                      tvot.Lane_No = tv.Lane_No;
-                      tvot.Plate = tv.Plate;
-                      tvot.Plate_Color = tv.Plate_Color;
-                      tvot.Class_Index = tv.Class_Index;
-                      tvot.Length = tv.Length;
-                      tvot.Speed = tv.Speed;
-                      tvot.Direction = tv.Direction;
-                      tvot.Axles_Count = tv.Axles_Count;
-                      tvot.Total_Weight = tv.Total_Weight;
-                      tvot.Is_Straddle = tv.Is_Straddle;
-                      tvot.Temperature = tv.Temperature;
-                      tvot.Over_Weight = tv.Over_Weight;
-                      tvot.Over_Weight_Ratio = tv.Over_Weight_Ratio;
-
-                      tvot.Axle1 = tv.Axle1;
-                      tvot.Axle2 = tv.Axle2;
-                      tvot.Axle3 = tv.Axle3;
-                      tvot.Axle4 = tv.Axle4;
-                      tvot.Axle5 = tv.Axle5;
-                      tvot.Axle6 = tv.Axle6;
-                      tvot.Axle7 = tv.Axle7;
-                      tvot.Axle8 = tv.Axle8;
-                      tvot.Axle9 = tv.Axle9;
-                      tvot.Axle10 = tv.Axle10;
-
-                      tvot.Axle_space1 = tv.Axle_space1;
-                      tvot.Axle_space2 = tv.Axle_space2;
-                      tvot.Axle_space3 = tv.Axle_space3;
-                      tvot.Axle_space4 = tv.Axle_space4;
-                      tvot.Axle_space5 = tv.Axle_space5;
-                      tvot.Axle_space6 = tv.Axle_space6;
-                      tvot.Axle_space7 = tv.Axle_space7;
-                      tvot.Axle_space8 = tv.Axle_space8;
-                      tvot.Axle_space9 = tv.Axle_space9;
-                      tvot.Station_IP = tv.Station_IP;
-                      tvot.WIM_Id = tv.WIM_Id;
-                      tvot.LPR_id = tv.LPR_id;
-                  }
-                  */
-            if (tv.Over_Weight != 0)
-            {
-                tvo = new t_vehicle_overweight();
-                tvo.id_local = tv.id_local;
-                tvo.Id = tv.Id;
-                tvo.Station_Id = tv.Station_Id;
-                tvo.Evt_Time = tv.Evt_Time;
-                tvo.Msg_Time = tv.Msg_Time;
-                tvo.Lane_No = tv.Lane_No;
-                tvo.Plate = tv.Plate;
-                tvo.Plate_Color = tv.Plate_Color;
-                tvo.Class_Index = tv.Class_Index;
-                tvo.Length = tv.Length;
-                tvo.Speed = tv.Speed;
-                tvo.Direction = tv.Direction;
-                tvo.Axles_Count = tv.Axles_Count;
-                tvo.Total_Weight = tv.Total_Weight;
-                tvo.Is_Straddle = tv.Is_Straddle;
-                tvo.Temperature = tv.Temperature;
-                tvo.Over_Weight = tv.Over_Weight;
-                tvo.Over_Weight_Ratio = tv.Over_Weight_Ratio;
-
-                tvo.Axle1 = tv.Axle1;
-                tvo.Axle2 = tv.Axle2;
-                tvo.Axle3 = tv.Axle3;
-                tvo.Axle4 = tv.Axle4;
-                tvo.Axle5 = tv.Axle5;
-                tvo.Axle6 = tv.Axle6;
-                tvo.Axle7 = tv.Axle7;
-                tvo.Axle8 = tv.Axle8;
-                tvo.Axle9 = tv.Axle9;
-                tvo.Axle10 = tv.Axle10;
-
-                tvo.Axle_space1 = tv.Axle_space1;
-                tvo.Axle_space2 = tv.Axle_space2;
-                tvo.Axle_space3 = tv.Axle_space3;
-                tvo.Axle_space4 = tv.Axle_space4;
-                tvo.Axle_space5 = tv.Axle_space5;
-                tvo.Axle_space6 = tv.Axle_space6;
-                tvo.Axle_space7 = tv.Axle_space7;
-                tvo.Axle_space8 = tv.Axle_space8;
-                tvo.Axle_space9 = tv.Axle_space9;
-                tvo.Station_IP = tv.Station_IP;
-                tvo.WIM_Id = tv.WIM_Id;
-                tvo.LPR_id = tv.LPR_id;
-            }
-
-            dtczEntities1 de = new dtczEntities1();
-            //先判断是否为异常数据，不是异常数据正常插入，判断是否超重。异常数据直接插入异常表
-            if (vMsg.OverWeightDataState == 1)
-            {
-                de.t_vehicle_msg.Add(tv);
-                if (tvt != null)
-                {
-                    de.t_vehicle_msg_today.Add(tvt);
-                }
-                if (tvot != null)
-                {
-                    if (vMsg.ImgData.Length > 0)
-                    {
-                        SysLog.WriteLog($"图片id名称:{tv.id_local}--Image,图片大小：{vMsg.ImgData.Length}");
-                        Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.ImgData.Length}");
-                        SaveImage2(vMsg.ImgData, port, tv.id_local, "Image",tv);
-                    }
-                    SysLog.WriteLog($"车辆超重超载将计入数据库");
-                    Console.WriteLine($"车辆超重超载将计入数据库");
-                    de.t_vehicle_overweight_temp.Add(tvot);
-                }
-                if (tvo != null)
-                {
-                    if (vMsg.ImgData.Length > 0)
-                    {
-                        SysLog.WriteLog($"图片id名称:{tv.id_local}--Image,图片大小：{vMsg.ImgData.Length}");
-                        Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.ImgData.Length}");
-                        SaveImage2(vMsg.ImgData, port, tv.id_local, "Image",tv);
-                    }
-                    SysLog.WriteLog($"车辆超重超载将计入数据库");
-                    Console.WriteLine($"车辆超重超载将计入数据库");
-                    de.t_vehicle_overweight.Add(tvo);
-                    
-                    //满足条件后发给json，最后到执法局
-                    if (tvo.Over_Weight_Ratio >= 0.05 && tvo.Axles_Count < 8 && tvo.Length < 2200 && tvo.Axle1 < 9000 && tvo.Speed<=100 && !(tvo.Station_IP.Equals("10015")|| tvo.Station_IP.Equals("10016")))
-                    {
-                        string imgBase64 = Convert.ToBase64String(vMsg.ImgData);
-                        string plate_imgBase64 = Convert.ToBase64String(vMsg.PlateImgData);
-                        SysLog.WriteLog($"发送出json数据");
-                        Console.WriteLine($"发送出json数据");
-                        sendTvoJson(tvo,plate_imgBase64 ,imgBase64);
-                    }
-                    
-                    
-                }      
-            }else
-            {
-                if (vMsg.ImgData.Length > 0)
-                {
-                    SysLog.WriteLog($"图片id名称:{tv.id_local}--Image,图片大小：{vMsg.ImgData.Length}");
-                    Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.ImgData.Length}");
-                    SaveImage2(vMsg.ImgData, port, tv.id_local, "Image",tv);
-                }
-                SysLog.WriteLog($"车辆超重超载数据异常，将计入异常数据库");
-                Console.WriteLine($"车辆超重超载数据异常，将计入异常数据库");
-                de.t_vehicle_msg_abnormal.Add(tva);
-            }
             try
             {
-                int c = de.SaveChanges();
-                SysLog.WriteLog($"车辆信息写入成功,1条记录");
-                Console.WriteLine($"车辆信息写入成功,1条记录");
-            }
-            catch (Exception err)
-            {
-                SysLog.WriteError($"车辆信息存入数据库出错，将写入本地：{err.Message}");
-                Console.WriteLine($"车辆信息存入数据库出错，将写入本地：{err.Message}");
-                saveInFile2(tv.Station_IP, tv,vMsg.ImgData,vMsg.PlateImgData,vMsg.OverWeightDataState);
-            }
+                Hashtable ht = (Hashtable)oht;
+                VehicleMsg vMsg = (VehicleMsg)ht["vMsg"];
+                string IP = (string)ht["IP"];
+                string port = (string)ht["port"];
+                //tv是全部车辆数据
+                t_vehicle_msg tv = new t_vehicle_msg();
+                //tvt是当日车辆数据，数据库每天零点会清空
+                t_vehicle_msg_today tvt = null;
+                //tvot是超重超载车辆数据，当车重符合条件并超过规定数额时，增加一条
+                t_vehicle_overweight_temp tvot = null;
 
-            if (vMsg.PlateImgData.Length > 0)
-            {
-                SysLog.WriteLog($"图片id名称:{tv.id_local}--PlateImg,图片大小：{vMsg.PlateImgData.Length}");
-                Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.PlateImgData.Length}");
-                SaveImage2(vMsg.PlateImgData, port, tv.id_local, "PlateImg",tv);
+                t_vehicle_overweight tvo = null;
+
+                t_vehicle_msg_abnormal tva = null;
+
+                //tv.id_local = System.Guid.NewGuid().ToString("N");//用UUID作为当前一条数据的ID。
+                tv.id_local = vMsg.Id;
+                tv.Id = vMsg.Id;
+                tv.Station_Id = vMsg.StationId;
+                tv.Evt_Time = vMsg.EvtTime;
+                tv.Msg_Time = vMsg.MsgTime;
+                tv.Lane_No = (sbyte)vMsg.LaneNo;
+                tv.Plate = vMsg.Plate;
+                tv.Plate_Color = (sbyte)vMsg.PlateColor;
+                tv.Class_Index = (sbyte)vMsg.ClassIndex;
+                tv.Length = (short)vMsg.Length;
+                tv.Speed = vMsg.Speed;
+                tv.Direction = (sbyte)vMsg.Direction;
+                tv.Axles_Count = (sbyte)vMsg.AxlesCount;
+                tv.Total_Weight = (int)vMsg.TotalWeight;
+                tv.Is_Straddle = (sbyte)vMsg.IsStraddle;
+                tv.Temperature = (sbyte)vMsg.Temperature;
+                tv.Over_Weight = (int)vMsg.OverWeight;
+                tv.Over_Weight_Ratio = vMsg.OverWeightRatio;
+
+                tv.Axle1 = vMsg.AxleWeights[0];
+                tv.Axle2 = vMsg.AxleWeights[1];
+                tv.Axle3 = vMsg.AxleWeights[2];
+                tv.Axle4 = vMsg.AxleWeights[3];
+                tv.Axle5 = vMsg.AxleWeights[4];
+                tv.Axle6 = vMsg.AxleWeights[5];
+                tv.Axle7 = vMsg.AxleWeights[6];
+                tv.Axle8 = vMsg.AxleWeights[7];
+                tv.Axle9 = vMsg.AxleWeights[8];
+                tv.Axle10 = vMsg.AxleWeights[9];
+
+                tv.Axle_space1 = vMsg.axleSpaces[0];
+                tv.Axle_space2 = vMsg.axleSpaces[1];
+                tv.Axle_space3 = vMsg.axleSpaces[2];
+                tv.Axle_space4 = vMsg.axleSpaces[3];
+                tv.Axle_space5 = vMsg.axleSpaces[4];
+                tv.Axle_space6 = vMsg.axleSpaces[5];
+                tv.Axle_space7 = vMsg.axleSpaces[6];
+                tv.Axle_space8 = vMsg.axleSpaces[7];
+                tv.Axle_space9 = vMsg.axleSpaces[8];
+                tv.Gap = vMsg.Gap;
+                tv.TimeGap = vMsg.TimeGap;
+                tv.Headway = vMsg.Headway;
+                tv.ValidityCode = vMsg.ValidityCode;
+                tv.Wheelbase = vMsg.Wheelbase;
+
+                tv.Station_IP = port;
+                tv.WIM_Id = "";
+                tv.LPR_id = "";
+
+                if (vMsg.OverWeightDataState == -1)
+                {
+                    tva = new t_vehicle_msg_abnormal();
+                    tva.id_local = tv.id_local;//用UUID作为当前一条数据的ID。
+                    tva.Id = tv.Id;
+                    tva.Station_Id = tv.Station_Id;
+                    tva.Evt_Time = tv.Evt_Time;
+                    tva.Msg_Time = tv.Msg_Time;
+                    tva.Lane_No = tv.Lane_No;
+                    tva.Plate = tv.Plate;
+                    tva.Plate_Color = tv.Plate_Color;
+                    tva.Class_Index = tv.Class_Index;
+                    tva.Length = tv.Length;
+                    tva.Speed = tv.Speed;
+                    tva.Direction = tv.Direction;
+                    tva.Axles_Count = tv.Axles_Count;
+                    tva.Total_Weight = tv.Total_Weight;
+                    tva.Is_Straddle = tv.Is_Straddle;
+                    tva.Temperature = tv.Temperature;
+                    tva.Over_Weight = tv.Over_Weight;
+                    tva.Over_Weight_Ratio = tv.Over_Weight_Ratio;
+
+                    tva.Axle1 = tv.Axle1;
+                    tva.Axle2 = tv.Axle2;
+                    tva.Axle3 = tv.Axle3;
+                    tva.Axle4 = tv.Axle4;
+                    tva.Axle5 = tv.Axle5;
+                    tva.Axle6 = tv.Axle6;
+                    tva.Axle7 = tv.Axle7;
+                    tva.Axle8 = tv.Axle8;
+                    tva.Axle9 = tv.Axle9;
+                    tva.Axle10 = tv.Axle10;
+
+                    tva.Axle_space1 = tv.Axle_space1;
+                    tva.Axle_space2 = tv.Axle_space2;
+                    tva.Axle_space3 = tv.Axle_space3;
+                    tva.Axle_space4 = tv.Axle_space4;
+                    tva.Axle_space5 = tv.Axle_space5;
+                    tva.Axle_space6 = tv.Axle_space6;
+                    tva.Axle_space7 = tv.Axle_space7;
+                    tva.Axle_space8 = tv.Axle_space8;
+                    tva.Axle_space9 = tv.Axle_space9;
+                    tva.Gap = tv.Gap;
+                    tva.TimeGap = tv.TimeGap;
+                    tva.Headway = tv.Headway;
+                    tva.ValidityCode = tv.ValidityCode;
+                    tva.Wheelbase = tv.Wheelbase;
+
+                    tva.Station_IP = tv.Station_IP;
+                    tva.WIM_Id = tv.WIM_Id;
+                    tva.LPR_id = tv.LPR_id;
+                }
+
+                if ((DateTime.Compare(DateTime.Now.Date, tv.Evt_Time.Date) == 0))
+                {
+                    tvt = new t_vehicle_msg_today();
+                    tvt.id_local = tv.id_local;//用UUID作为当前一条数据的ID。
+                    tvt.Id = tv.Id;
+                    tvt.Station_Id = tv.Station_Id;
+                    tvt.Evt_Time = tv.Evt_Time;
+                    tvt.Msg_Time = tv.Msg_Time;
+                    tvt.Lane_No = tv.Lane_No;
+                    tvt.Plate = tv.Plate;
+                    tvt.Plate_Color = tv.Plate_Color;
+                    tvt.Class_Index = tv.Class_Index;
+                    tvt.Length = tv.Length;
+                    tvt.Speed = tv.Speed;
+                    tvt.Direction = tv.Direction;
+                    tvt.Axles_Count = tv.Axles_Count;
+                    tvt.Total_Weight = tv.Total_Weight;
+                    tvt.Is_Straddle = tv.Is_Straddle;
+                    tvt.Temperature = tv.Temperature;
+                    tvt.Over_Weight = tv.Over_Weight;
+                    tvt.Over_Weight_Ratio = tv.Over_Weight_Ratio;
+
+                    tvt.Axle1 = tv.Axle1;
+                    tvt.Axle2 = tv.Axle2;
+                    tvt.Axle3 = tv.Axle3;
+                    tvt.Axle4 = tv.Axle4;
+                    tvt.Axle5 = tv.Axle5;
+                    tvt.Axle6 = tv.Axle6;
+                    tvt.Axle7 = tv.Axle7;
+                    tvt.Axle8 = tv.Axle8;
+                    tvt.Axle9 = tv.Axle9;
+                    tvt.Axle10 = tv.Axle10;
+
+                    tvt.Axle_space1 = tv.Axle_space1;
+                    tvt.Axle_space2 = tv.Axle_space2;
+                    tvt.Axle_space3 = tv.Axle_space3;
+                    tvt.Axle_space4 = tv.Axle_space4;
+                    tvt.Axle_space5 = tv.Axle_space5;
+                    tvt.Axle_space6 = tv.Axle_space6;
+                    tvt.Axle_space7 = tv.Axle_space7;
+                    tvt.Axle_space8 = tv.Axle_space8;
+                    tvt.Axle_space9 = tv.Axle_space9;
+                    tvt.Gap = tv.Gap;
+                    tvt.TimeGap = tv.TimeGap;
+                    tvt.Headway = tv.Headway;
+                    tvt.ValidityCode = tv.ValidityCode;
+                    tvt.Wheelbase = tv.Wheelbase;
+
+                    tvt.Station_IP = tv.Station_IP;
+                    tvt.WIM_Id = tv.WIM_Id;
+                    tvt.LPR_id = tv.LPR_id;
+                }
+                /*      if (tv.Total_Weight >= 80000)
+                      {
+                          tvot = new t_vehicle_overweight_temp();
+                          tvot.id_local = tv.id_local;
+                          tvot.Id = tv.Id;
+                          tvot.Station_Id = tv.Station_Id;
+                          tvot.Evt_Time = tv.Evt_Time;
+                          tvot.Msg_Time = tv.Msg_Time;
+                          tvot.Lane_No = tv.Lane_No;
+                          tvot.Plate = tv.Plate;
+                          tvot.Plate_Color = tv.Plate_Color;
+                          tvot.Class_Index = tv.Class_Index;
+                          tvot.Length = tv.Length;
+                          tvot.Speed = tv.Speed;
+                          tvot.Direction = tv.Direction;
+                          tvot.Axles_Count = tv.Axles_Count;
+                          tvot.Total_Weight = tv.Total_Weight;
+                          tvot.Is_Straddle = tv.Is_Straddle;
+                          tvot.Temperature = tv.Temperature;
+                          tvot.Over_Weight = tv.Over_Weight;
+                          tvot.Over_Weight_Ratio = tv.Over_Weight_Ratio;
+
+                          tvot.Axle1 = tv.Axle1;
+                          tvot.Axle2 = tv.Axle2;
+                          tvot.Axle3 = tv.Axle3;
+                          tvot.Axle4 = tv.Axle4;
+                          tvot.Axle5 = tv.Axle5;
+                          tvot.Axle6 = tv.Axle6;
+                          tvot.Axle7 = tv.Axle7;
+                          tvot.Axle8 = tv.Axle8;
+                          tvot.Axle9 = tv.Axle9;
+                          tvot.Axle10 = tv.Axle10;
+
+                          tvot.Axle_space1 = tv.Axle_space1;
+                          tvot.Axle_space2 = tv.Axle_space2;
+                          tvot.Axle_space3 = tv.Axle_space3;
+                          tvot.Axle_space4 = tv.Axle_space4;
+                          tvot.Axle_space5 = tv.Axle_space5;
+                          tvot.Axle_space6 = tv.Axle_space6;
+                          tvot.Axle_space7 = tv.Axle_space7;
+                          tvot.Axle_space8 = tv.Axle_space8;
+                          tvot.Axle_space9 = tv.Axle_space9;
+                          tvot.Station_IP = tv.Station_IP;
+                          tvot.WIM_Id = tv.WIM_Id;
+                          tvot.LPR_id = tv.LPR_id;
+                      }
+                      */
+                if (tv.Over_Weight != 0 && vMsg.OverWeightDataState != -1)
+                {
+                    tvo = new t_vehicle_overweight();
+                    tvo.id_local = tv.id_local;
+                    tvo.Id = tv.Id;
+                    tvo.Station_Id = tv.Station_Id;
+                    tvo.Evt_Time = tv.Evt_Time;
+                    tvo.Msg_Time = tv.Msg_Time;
+                    tvo.Lane_No = tv.Lane_No;
+                    tvo.Plate = tv.Plate;
+                    tvo.Plate_Color = tv.Plate_Color;
+                    tvo.Class_Index = tv.Class_Index;
+                    tvo.Length = tv.Length;
+                    tvo.Speed = tv.Speed;
+                    tvo.Direction = tv.Direction;
+                    tvo.Axles_Count = tv.Axles_Count;
+                    tvo.Total_Weight = tv.Total_Weight;
+                    tvo.Is_Straddle = tv.Is_Straddle;
+                    tvo.Temperature = tv.Temperature;
+                    tvo.Over_Weight = tv.Over_Weight;
+                    tvo.Over_Weight_Ratio = tv.Over_Weight_Ratio;
+
+                    tvo.Axle1 = tv.Axle1;
+                    tvo.Axle2 = tv.Axle2;
+                    tvo.Axle3 = tv.Axle3;
+                    tvo.Axle4 = tv.Axle4;
+                    tvo.Axle5 = tv.Axle5;
+                    tvo.Axle6 = tv.Axle6;
+                    tvo.Axle7 = tv.Axle7;
+                    tvo.Axle8 = tv.Axle8;
+                    tvo.Axle9 = tv.Axle9;
+                    tvo.Axle10 = tv.Axle10;
+
+                    tvo.Axle_space1 = tv.Axle_space1;
+                    tvo.Axle_space2 = tv.Axle_space2;
+                    tvo.Axle_space3 = tv.Axle_space3;
+                    tvo.Axle_space4 = tv.Axle_space4;
+                    tvo.Axle_space5 = tv.Axle_space5;
+                    tvo.Axle_space6 = tv.Axle_space6;
+                    tvo.Axle_space7 = tv.Axle_space7;
+                    tvo.Axle_space8 = tv.Axle_space8;
+                    tvo.Axle_space9 = tv.Axle_space9;
+                    tvo.Gap = tv.Gap;
+                    tvo.TimeGap = tv.TimeGap;
+                    tvo.Headway = tv.Headway;
+                    tvo.ValidityCode = tv.ValidityCode;
+                    tvo.Wheelbase = tv.Wheelbase;
+
+                    tvo.Station_IP = tv.Station_IP;
+                    tvo.WIM_Id = tv.WIM_Id;
+                    tvo.LPR_id = tv.LPR_id;
+                }
+                dtczEntities1 de=null;
+                try
+                {
+                    de = new dtczEntities1();
+                    //先判断是否为异常数据，不是异常数据正常插入，判断是否超重。异常数据直接插入异常表
+                    if (vMsg.OverWeightDataState == 1)
+                    {
+                        de.t_vehicle_msg.Add(tv);
+                        if (tvt != null)
+                        {
+                            de.t_vehicle_msg_today.Add(tvt);
+                        }
+                        if (tvot != null)
+                        {
+                            if (vMsg.ImgData.Length > 0)
+                            {
+                                SysLog.WriteLog($"图片id名称:{tv.id_local}--Image,图片大小：{vMsg.ImgData.Length}");
+                                Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.ImgData.Length}");
+                                SaveImage2(vMsg.ImgData, port, tv.id_local, "Image", tv);
+                            }
+                            SysLog.WriteLog($"车辆超重超载将计入数据库");
+                            Console.WriteLine($"车辆超重超载将计入数据库");
+                            de.t_vehicle_overweight_temp.Add(tvot);
+                        }
+                        if (tvo != null)
+                        {
+                            if (vMsg.ImgData.Length > 0)
+                            {
+                                SysLog.WriteLog($"图片id名称:{tv.id_local}--Image,图片大小：{vMsg.ImgData.Length}");
+                                Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.ImgData.Length}");
+                                SaveImage2(vMsg.ImgData, port, tv.id_local, "Image", tv);
+                            }
+                            SysLog.WriteLog($"车辆超重超载将计入数据库");
+                            Console.WriteLine($"车辆超重超载将计入数据库");
+                            de.t_vehicle_overweight.Add(tvo);
+
+                            
+                            //以下是不发送条件
+                            if (vMsg==null || vMsg.PlateImgData == null|| vMsg.ImgData==null||tvo.Station_IP==null|| port==null ||tvo==null||tvo.Plate.Equals("无车牌")||tvo.Station_IP.Equals("10015") || tvo.Station_IP.Equals("10016") || Convert.ToInt32(port) > 10014 || vMsg.ImgData.Length==0||vMsg.PlateImgData.Length == 0)
+                            {
+                                
+                            }
+                            //满足条件后发给json，最后到执法局
+                            else if (tvo.Over_Weight_Ratio >= 0.05 && tvo.Axles_Count < 8 && tvo.Length < 2200 && tvo.Axle1 < 9000 && tvo.Speed <= 100 )
+                            {
+                                string imgBase64 = Convert.ToBase64String(vMsg.ImgData);
+                                string plate_imgBase64 = Convert.ToBase64String(vMsg.PlateImgData);
+                                SysLog.WriteLog($"发送出json数据");
+                                Console.WriteLine($"发送出json数据");
+                                sendTvoJson(tvo,plate_imgBase64 ,imgBase64);
+                            }
+
+
+                        }
+                    }
+                    else
+                    {
+                        if (vMsg.ImgData.Length > 0)
+                        {
+                            SysLog.WriteLog($"图片id名称:{tv.id_local}--Image,图片大小：{vMsg.ImgData.Length}");
+                            Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.ImgData.Length}");
+                            SaveImage2(vMsg.ImgData, port, tv.id_local, "Image", tv);
+                        }
+                        SysLog.WriteLog($"车辆超重超载数据异常，将计入异常数据库");
+                        Console.WriteLine($"车辆超重超载数据异常，将计入异常数据库");
+                        de.t_vehicle_msg_abnormal.Add(tva);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("错误处507行" + e.Message);
+                    SysLog.WriteError("错误处507行"+e.Message);
+                }
+                try
+                {
+                    int c = de.SaveChanges();
+                    SysLog.WriteLog($"车辆信息写入成功,1条记录");
+                    Console.WriteLine($"车辆信息写入成功,1条记录");
+                }
+                catch (DbUpdateException due)
+                {
+                    SysLog.WriteError($"车辆信息存入数据库出错，数据重复：{due.InnerException.InnerException.Message}");
+                    Console.WriteLine($"车辆信息存入数据库出错，数据重复：{due.InnerException.InnerException.Message}");
+                    Console.WriteLine("--------------------------------------------------------------------------------");
+                    return;
+                }
+                catch (Exception err)
+                {
+                    SysLog.WriteError($"车辆信息存入数据库出错，将写入本地：{err.Message}");
+                    Console.WriteLine($"车辆信息存入数据库出错，将写入本地：{err.Message}");
+                    //Console.WriteLine($"车辆信息存入数据库出错，将写入本地：{err.InnerException.InnerException.Message}");
+                    saveInFile2(tv.Station_IP, tv, vMsg.ImgData, vMsg.PlateImgData, vMsg.OverWeightDataState);
+                }
+
+                if (vMsg.PlateImgData.Length > 0)
+                {
+                    SysLog.WriteLog($"图片id名称:{tv.id_local}--PlateImg,图片大小：{vMsg.PlateImgData.Length}");
+                    Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.PlateImgData.Length}");
+                    SaveImage2(vMsg.PlateImgData, port, tv.id_local, "PlateImg", tv);
+                }
+                if (vMsg.LaserImgData.Length > 0)
+                {
+                    SysLog.WriteLog($"图片id名称:{tv.id_local}--LaserImg,图片大小：{vMsg.LaserImgData.Length}");
+                    Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.LaserImgData.Length}");
+                    SaveImage2(vMsg.LaserImgData, port, tv.id_local, "LaserImg", tv);
+                }
+                Console.WriteLine("--------------------------------------------------------------------------------");
+                vMsg = null;
+                de = null;
+                tv = null;
+                tvt = null;
+                tvot = null;
+                tvo = null;
             }
-            if (vMsg.LaserImgData.Length > 0)
+            catch (Exception e)
             {
-                SysLog.WriteLog($"图片id名称:{tv.id_local}--LaserImg,图片大小：{vMsg.LaserImgData.Length}");
-                Console.WriteLine($"图片id名称:{tv.id_local},图片大小：{vMsg.LaserImgData.Length}");
-                SaveImage2(vMsg.LaserImgData, port, tv.id_local, "LaserImg",tv);
+                Console.WriteLine("saveintoDatabase里的错误"+e.Message);
+                SysLog.WriteError("saveintoDatabase里的错误"+e.Message);
             }
-            Console.WriteLine("--------------------------------------------------------------------------------");
-            vMsg = null;
-            de = null;
-            tv = null;
-            tvt = null;
-            tvot = null;
-            tvo = null;
         }
 
         private static void Timer_Tick(object sender, EventArgs e)
@@ -676,6 +762,11 @@ namespace Demo
             sb.Append("\"" + tv.Temperature + "\",");
             sb.Append("\"" + tv.Over_Weight + "\",");
             sb.Append("\"" + tv.Over_Weight_Ratio + "\",");
+            sb.Append("\"" + tv.Gap + "\",");
+            sb.Append("\"" + tv.TimeGap + "\",");
+            sb.Append("\"" + tv.Headway + "\",");
+            sb.Append("\"" + tv.ValidityCode + "\",");
+            sb.Append("\"" + tv.Wheelbase + "\",");
             sb.Append("\"" + tv.WIM_Id + "\",");
             sb.Append("\"" + tv.LPR_id + "\",");
             sb.Append("\"" + tv.Station_IP + "\"");
@@ -686,8 +777,8 @@ namespace Demo
                 try
                 {
 
-                    SysLog.WriteLog("[写入本地]数据库连接异常，数据写入本地文件：" + fileName);
-                    Console.WriteLine("[写入本地]数据库连接异常，数据写入本地文件：" + fileName);
+                    SysLog.WriteLog("[写入本地]数据库连接异常1，数据写入本地文件：" + fileName);
+                    Console.WriteLine("[写入本地]数据库连接异常1，数据写入本地文件：" + fileName);
                     f = new StreamWriter(fullname, true);
                     f.WriteLine(sb);
                 }
@@ -768,7 +859,13 @@ namespace Demo
             sb.Append("\"" + tv.WIM_Id + "\",");
             sb.Append("\"" + tv.LPR_id + "\",");
             sb.Append("\"" + tv.Station_IP + "\",");
+            sb.Append("\"" + tv.Gap + "\",");
+            sb.Append("\"" + tv.TimeGap + "\",");
+            sb.Append("\"" + tv.Headway + "\",");
+            sb.Append("\"" + tv.ValidityCode + "\",");
+            sb.Append("\"" + tv.Wheelbase + "\",");
             sb.Append("\"" + overWeightDataState + "\"");
+
             object lockThis = new object();
             StreamWriter f = null;
             lock (lockThis)
@@ -776,8 +873,8 @@ namespace Demo
                 try
                 {
 
-                    SysLog.WriteLog("[写入本地]数据库连接异常，数据写入本地文件：" + fileName);
-                    Console.WriteLine("[写入本地]数据库连接异常，数据写入本地文件：" + fileName);
+                    SysLog.WriteLog("[写入本地]数据库连接异常2，数据写入本地文件：" + fileName);
+                    Console.WriteLine("[写入本地]数据库连接异常2，数据写入本地文件：" + fileName);
                     f = new StreamWriter(fullname, true);
                     f.WriteLine(sb);
                 }
@@ -797,7 +894,6 @@ namespace Demo
         //
         public static void sendTvoJson(t_vehicle_overweight tvo, string plate_imgBase64, string imgBase64)
         {
-
             WebClient webClient = new WebClient();
             StringBuilder sb = new StringBuilder();
             sb.Append("{");
@@ -856,25 +952,30 @@ namespace Demo
 
             webClient.Headers[HttpRequestHeader.ContentType] = "application/json";
             webClient.Headers.Add("token", "bXpqbVI1clBUR1k1TGVoejVLOEVKTU01ek1yTWpPOVg=");
+            webClient.Headers.Add("miccode", "MicrovideO@$123654");
             System.Net.ServicePointManager.Expect100Continue = false;
             string response = string.Empty;
             bool isSuccess = false;
+            string s2 = "";
             try
             {
                 //response = webClient.UploadString("http://139.198.176.206:1914/audrate/weight/add", sb.ToString());
                 response = webClient.UploadString("http://139.198.176.206:1980/audgateway/audrate/weight/add", sendString);
                 //取出success后面的值，看是成功还是失败
                 string s = response;
-                s = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(response));
-                s = s.Substring(s.LastIndexOf("success") + 9);
-                string[] split = s.Split(new char[] { ',', '}' });
-                isSuccess = split[0].Trim().Equals("true");
+                s2 = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(response));
+
+                //s = s2.Substring(s.LastIndexOf("success") + 9);
+                //string[] split = s.Split(new char[] { ',', '}' });
+                //isSuccess = split[0].Trim().Equals("true");
+                isSuccess = s2.Contains("\"success\":true");
             }
             catch (Exception e)
             {
+                SysLog.WriteError("[上传json]：失败,出现Exception,id:" + tvo.id_local);
                 SysLog.WriteError(e.Message);
                 Console.WriteLine(e.Message);
-                Console.WriteLine("[上传json]：失败,出现Exception");
+                Console.WriteLine("[上传json]：失败,出现Exception,id:"+ tvo.id_local);
             }
 
             if (isSuccess)
@@ -884,7 +985,8 @@ namespace Demo
             }
             else
             {
-                SysLog.WriteLog("[上传json]：失败");
+                SysLog.WriteLog("[上传json]：失败,id:" + tvo.id_local);
+                SysLog.WriteLog("失败返回数据："+s2);
                 Console.WriteLine("[上传json]：失败");
             }
         }
@@ -946,6 +1048,28 @@ namespace Demo
                 case "10016": return "G36宁洛苏皖界";
                 default: return "";
             }
+        }
+
+        private static void saveInFileBytes(byte[] data)
+        {
+            try
+            {
+                string path = Application.StartupPath + "\\dataByte\\";
+                string fileName = System.Guid.NewGuid().ToString("N") + ".bin";
+                string fullname = Path.Combine(path, fileName);
+                FileStream fs = new FileStream(fullname, FileMode.Create);
+                fs.Write(data, 0, data.Length);
+                fs.Flush();
+                fs.Close();
+                Console.WriteLine("[data写入文件]：成功");
+            }
+            catch (Exception e)
+            {
+
+                Console.WriteLine("[data写入文件]：失败");
+            }
+            
+
         }
 
     }

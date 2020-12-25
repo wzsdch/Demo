@@ -54,5 +54,10 @@ namespace Demo
         public string WIM_Id { get; set; }
         public string LPR_id { get; set; }
         public string Station_IP { get; set; }
+        public Nullable<int> ValidityCode { get; set; }
+        public Nullable<int> Wheelbase { get; set; }
+        public Nullable<int> Gap { get; set; }
+        public Nullable<int> TimeGap { get; set; }
+        public Nullable<int> Headway { get; set; }
     }
 }
